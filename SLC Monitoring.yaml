@@ -1,0 +1,350 @@
+zabbix_export:
+  version: '7.2'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: e6de4897f516464eb121544538bb5ef4
+      template: 'SLC Monitoring'
+      name: 'SLC Monitoring'
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: b5693e8de04741708b0057964bca4662
+          name: Connections
+          type: HTTP_AGENT
+          key: slc.connections
+          history: '0'
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/connections'
+        - uuid: ea8ae0d72deb4a1fa306b43e63ef2995
+          name: 'Connections count'
+          type: DEPENDENT
+          key: slc.connections.count
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Connections.length()
+          master_item:
+            key: slc.connections
+        - uuid: 63cbfd15025540f3b9483f7086f05bf9
+          name: 'Licence total count'
+          type: DEPENDENT
+          key: slc.licence.total.count
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $..LicenceCount.sum()
+          master_item:
+            key: slc.licences
+        - uuid: a0a52ee345794222a0fa409bdf5b460e
+          name: Licences
+          type: HTTP_AGENT
+          key: slc.licences
+          history: '0'
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/licences'
+        - uuid: f1475a8cde9a4b1b8e28df9e5878f18b
+          name: Serverinfo
+          type: HTTP_AGENT
+          key: slc.serverinfo
+          history: '0'
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/serverinfo'
+        - uuid: 0dc75e1be01f45398b5c9a23bed8c2a2
+          name: Sessions
+          type: HTTP_AGENT
+          key: slc.sessions
+          history: '0'
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/sessions'
+        - uuid: 124ed03957c44afda72b1959a42d12bb
+          name: 'Sessions total count'
+          type: DEPENDENT
+          key: slc.sessions.totalcount
+          history: 365d
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Sessions.length()
+          master_item:
+            key: slc.sessions
+        - uuid: a73d64d3db8b4170a774a2c65b2f9ca2
+          name: Version
+          type: DEPENDENT
+          key: slc.version
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Version
+          master_item:
+            key: slc.serverinfo
+      discovery_rules:
+        - uuid: 7443e9f630cc4bc19f699571e07eee41
+          name: 'License discovery'
+          type: HTTP_AGENT
+          key: slc.licences.discovery
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          item_prototypes:
+            - uuid: 0f8fd35befce431b9368bbe44a43148c
+              name: 'Licence {#KEYNO} LicenceCount'
+              type: DEPENDENT
+              key: 'slc.licences.licence.count[{#KEYNO}]'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Licences[?(@.KeyNo=={#KEYNO})].LicenceCount'
+                - type: JSONPATH
+                  parameters:
+                    - '$.[0]'
+              master_item:
+                key: slc.licences
+            - uuid: a20fd52f34b845d7ad3aa6f546a3a9ff
+              name: 'Licence {#KEYNO} Workable'
+              type: DEPENDENT
+              key: 'slc.licences.licence.workable[{#KEYNO}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Licences[?(@.KeyNo=={#KEYNO})].Workable'
+                - type: JSONPATH
+                  parameters:
+                    - '$.[0]'
+              master_item:
+                key: slc.licences
+            - uuid: a2ca6fa1056841dd8a346b547cc66482
+              name: 'Licence {#KEYNO} Type'
+              type: DEPENDENT
+              key: 'slc.licences.type[{#KEYNO}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Licences[?(@.KeyNo=={#KEYNO})].Type'
+                - type: JSONPATH
+                  parameters:
+                    - '$.[0]'
+              master_item:
+                key: slc.licences
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/licences'
+          lld_macro_paths:
+            - lld_macro: '{#KEYNO}'
+              path: $.KeyNo
+            - lld_macro: '{#TYPE}'
+              path: $.Type
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Licences
+        - uuid: 69f51c908e064fd88dc94f5f54ff589f
+          name: 'License discovery Vitual'
+          type: HTTP_AGENT
+          key: slc.licences.discovery.virtual
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          filter:
+            conditions:
+              - macro: '{#TYPE}'
+                value: ^Virtual$
+          item_prototypes:
+            - uuid: f17715c53ad0493aa64b6979c0ef3e44
+              name: 'Licence {#KEYNO} Activation code'
+              type: DEPENDENT
+              key: 'slc.licences.virtual.activationcode[{#KEYNO}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Licences[?(@.KeyNo=={#KEYNO})].ActivationCode'
+                - type: JSONPATH
+                  parameters:
+                    - '$.[0]'
+              master_item:
+                key: slc.licences
+            - uuid: 3138aec89c9743aa9be88512e297e727
+              name: 'Licence {#KEYNO} Article Name'
+              type: DEPENDENT
+              key: 'slc.licences.virtual.articlename[{#KEYNO}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Licences[?(@.KeyNo=={#KEYNO})].ArticleName'
+                - type: JSONPATH
+                  parameters:
+                    - '$.[0]'
+              master_item:
+                key: slc.licences
+            - uuid: 7692bb97ae784329a29c48a13ef56da0
+              name: 'Licence {#KEYNO} Article'
+              type: DEPENDENT
+              key: 'slc.licences.virtual.article[{#KEYNO}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Licences[?(@.KeyNo=={#KEYNO})].Article'
+                - type: JSONPATH
+                  parameters:
+                    - '$.[0]'
+              master_item:
+                key: slc.licences
+            - uuid: 8d25f0763be949ddbea0cb82ebdc3518
+              name: 'Licence {#KEYNO} Registration number'
+              type: DEPENDENT
+              key: 'slc.licences.virtual.regno[{#KEYNO}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Licences[?(@.KeyNo=={#KEYNO})].RegNo'
+                - type: JSONPATH
+                  parameters:
+                    - '$.[0]'
+              master_item:
+                key: slc.licences
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/licences'
+          lld_macro_paths:
+            - lld_macro: '{#KEYNO}'
+              path: $.KeyNo
+            - lld_macro: '{#TYPE}'
+              path: $.Type
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Licences
+        - uuid: a546b3431be242eda9bd752f1897e815
+          name: 'Sessions discovery USB'
+          type: HTTP_AGENT
+          key: slc.sessions.discovery.usb
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          filter:
+            conditions:
+              - macro: '{#KEYID}'
+                operator: NOT_EXISTS
+          item_prototypes:
+            - uuid: d6dccf4a812e49b187b340240e0d9ea9
+              name: 'Session Serie {#SERIE} {#USEDLICENCE} used licence count'
+              type: DEPENDENT
+              key: 'slc.sessions.serie.usedlicence[{#USEDLICENCE}]'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Sessions[?(@.Serie == "{#SERIE}" && @.UsedLicence == {#USEDLICENCE})].SessionNumber.length()'
+              master_item:
+                key: slc.sessions
+            - uuid: 6c944602ed0546fcbd7665390bfd6921
+              name: 'Session Serie {#SERIE} used licence count'
+              type: DEPENDENT
+              key: 'slc.sessions.serie[{#SERIE}]'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Sessions[?(@.Serie=="{#SERIE}")].UsedLicence.length()'
+              master_item:
+                key: slc.sessions
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/sessions'
+          lld_macro_paths:
+            - lld_macro: '{#KEYID}'
+              path: $.KeyID
+            - lld_macro: '{#SERIE}'
+              path: $.Serie
+            - lld_macro: '{#USEDLICENCE}'
+              path: $.UsedLicence
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Sessions
+        - uuid: 1750ee3dc8fa4576ba23e2a138658897
+          name: 'Sessions discovery Virtual'
+          type: HTTP_AGENT
+          key: slc.sessions.discovery.virtual
+          authtype: BASIC
+          username: '{$SLC.USER}'
+          password: '{$SLC.PASSWORD}'
+          filter:
+            evaltype: OR
+            conditions:
+              - macro: '{#SERIE}'
+                operator: NOT_EXISTS
+          item_prototypes:
+            - uuid: ebbf5e4b2c394936b3bc19e329c95d6f
+              name: 'Session KeyID {#KEYID} {#USEDLICENCE} used licence count'
+              type: DEPENDENT
+              key: 'slc.sessions.keyid.usedlicence[{#USEDLICENCE}]'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Sessions[?(@.KeyID == "{#KEYID}" && @.UsedLicence == {#USEDLICENCE})].ID.length()'
+              master_item:
+                key: slc.sessions
+            - uuid: 2e70855134db4c2ab85f38fa8d74b8d4
+              name: 'Session KeyID {#KEYID} used licence count'
+              type: DEPENDENT
+              key: 'slc.sessions.keyid[{#KEYID}]'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.Sessions[?(@.KeyID=="{#KEYID}")].UsedLicence.length()'
+              master_item:
+                key: slc.sessions
+          url: 'http://{HOST.IP}:{$SLC.PORT}/api/sessions'
+          lld_macro_paths:
+            - lld_macro: '{#KEYID}'
+              path: $.KeyID
+            - lld_macro: '{#SERIE}'
+              path: $.Serie
+            - lld_macro: '{#USEDLICENCE}'
+              path: $.UsedLicence
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Sessions
+      macros:
+        - macro: '{$SLC.PASSWORD}'
+          type: SECRET_TEXT
+        - macro: '{$SLC.PORT}'
+          value: '9099'
+        - macro: '{$SLC.USER}'
+          value: admin
+  triggers:
+    - uuid: 1e9a670ae54e4e6fa17829b5a99b1148
+      expression: 'last(/SLC Monitoring/slc.sessions.totalcount)*100/max(/SLC Monitoring/slc.licence.total.count,5m)>90'
+      name: 'There are less than 10% of free licenses left'
+      priority: DISASTER
+    - uuid: 808822d6f99e42c18e3faac50f105fdb
+      expression: 'last(/SLC Monitoring/slc.sessions.totalcount)*100/max(/SLC Monitoring/slc.licence.total.count,5m)>80'
+      name: 'There are less than 20% of free licenses left'
+      priority: HIGH
+    - uuid: 415d40f1c3254bac82528cc187f9d193
+      expression: 'last(/SLC Monitoring/slc.sessions.totalcount)*100/max(/SLC Monitoring/slc.licence.total.count,5m)>70'
+      name: 'There are less than 30% of free licenses left'
+      priority: AVERAGE
+    - uuid: 5a5f0de2a4114b0aa338604aed325acf
+      expression: 'last(/SLC Monitoring/slc.sessions.totalcount)*100/max(/SLC Monitoring/slc.licence.total.count,5m)>60'
+      name: 'There are less than 40% of free licenses left'
+      priority: WARNING
+    - uuid: 3591d9d3e9a142a0b9c4583d3fe6fdf8
+      expression: 'last(/SLC Monitoring/slc.sessions.totalcount)*100/max(/SLC Monitoring/slc.licence.total.count,5m)>50'
+      name: 'There are less than 50% of free licenses left'
+      priority: INFO
